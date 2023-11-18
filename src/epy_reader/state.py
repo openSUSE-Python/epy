@@ -1,3 +1,4 @@
+import contextlib
 import dataclasses
 import hashlib
 import os
@@ -63,9 +64,8 @@ class State(AppData):
         return library[0].filepath if library else None
 
     def update_library(self, ebook: Ebook, reading_progress: Optional[float]) -> None:
-        try:
-            metadata = ebook.get_meta()
-            conn = sqlite3.connect(self.filepath)
+        metadata = ebook.get_meta()
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO library (filepath, title, author, reading_progress)
@@ -74,12 +74,9 @@ class State(AppData):
                 (ebook.path, metadata.title, metadata.creator, reading_progress),
             )
             conn.commit()
-        finally:
-            conn.close()
 
     def get_last_reading_state(self, ebook: Ebook) -> ReadingState:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT * FROM reading_states WHERE filepath=?", (ebook.path,))
@@ -89,12 +86,9 @@ class State(AppData):
                 del result["filepath"]
                 return ReadingState(**result, section=None)
             return ReadingState(content_index=0, textwidth=80, row=0, rel_pctg=None, section=None)
-        finally:
-            conn.close()
 
     def set_last_reading_state(self, ebook: Ebook, reading_state: ReadingState) -> None:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO reading_states
@@ -103,12 +97,9 @@ class State(AppData):
                 {"filepath": ebook.path, **dataclasses.asdict(reading_state)},
             )
             conn.commit()
-        finally:
-            conn.close()
 
     def insert_bookmark(self, ebook: Ebook, name: str, reading_state: ReadingState) -> None:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.execute(
                 """
                 INSERT INTO bookmarks
@@ -122,20 +113,14 @@ class State(AppData):
                 },
             )
             conn.commit()
-        finally:
-            conn.close()
 
     def delete_bookmark(self, ebook: Ebook, name: str) -> None:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.execute("DELETE FROM bookmarks WHERE filepath=? AND name=?", (ebook.path, name))
             conn.commit()
-        finally:
-            conn.close()
 
     def get_bookmarks(self, ebook: Ebook) -> List[Tuple[str, ReadingState]]:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT * FROM bookmarks WHERE filepath=?", (ebook.path,))
@@ -151,12 +136,9 @@ class State(AppData):
                 }
                 bookmarks.append((name, ReadingState(**tmp_dict)))
             return bookmarks
-        finally:
-            conn.close()
 
     def init_db(self) -> None:
-        try:
-            conn = sqlite3.connect(self.filepath)
+        with contextlib.closing(sqlite3.connect(self.filepath)) as conn:
             conn.executescript(
                 """
                 CREATE TABLE reading_states (
@@ -191,5 +173,3 @@ class State(AppData):
                 """
             )
             conn.commit()
-        finally:
-            conn.close()
