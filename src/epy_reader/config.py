@@ -10,6 +10,7 @@ from epy_reader.models import AppData, Key
 
 class Config(AppData):
     def __init__(self):
+        super().__init__()
         setting_dict = dataclasses.asdict(settings.Settings())
         keymap_dict = dataclasses.asdict(settings.CfgDefaultKeymaps())
         keymap_builtin_dict = dataclasses.asdict(settings.CfgBuiltinKeymaps())
@@ -35,6 +36,8 @@ class Config(AppData):
         self.keymap = settings.Keymap(**keymap_updated)
         # to build help menu text
         self.keymap_user_dict = keymap_dict
+
+        self.history_file = os.path.join(self.prefix, "readline_history.txt")
 
     @property
     def filepath(self) -> str:
