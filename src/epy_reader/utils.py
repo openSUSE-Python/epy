@@ -39,7 +39,7 @@ def safe_curs_set(state: int) -> None:
     try:
         curses.curs_set(state)
     except:
-        return
+        pass
 
 
 def find_current_content_index(
