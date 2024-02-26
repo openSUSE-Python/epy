@@ -213,18 +213,14 @@ class AppData:
         """Return None if there exists no homedir | userdir"""
         prefix: Optional[str] = None
 
-        # UNIX filesystem
-        homedir = os.getenv("HOME")
-        # WIN filesystem
-        userdir = os.getenv("USERPROFILE")
+        # Works correctly both on Unix and Windows
+        homedir = os.path.expanduser("~")
 
         if homedir:
             if os.path.isdir(os.path.join(homedir, ".config")):
                 prefix = os.path.join(homedir, ".config", "epy")
             else:
                 prefix = os.path.join(homedir, ".epy")
-        elif userdir:
-            prefix = os.path.join(userdir, ".epy")
 
         if prefix:
             os.makedirs(prefix, exist_ok=True)
