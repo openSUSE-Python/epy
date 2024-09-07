@@ -95,9 +95,9 @@ Change the values by using this image. (Make sure to ignore zeros at the beginni
 
 ## Reading Tips Using Epy
 
-When reading using `epy` you might occasionally find triple asteriks `***`.
+When reading using `epy` you might occasionally find triple asterisks `***`.
 That means you reach the end of some section in your ebook
-and the next line (right after those three asteriks, which is in new section)
+and the next line (right after those three asterisks, which is in new section)
 will start at the top of the page.
 This might be disorienting, so the best way to get seamless reading experience
 is by using next-page control (`space`, `l` or `Right`)

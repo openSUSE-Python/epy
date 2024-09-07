@@ -96,7 +96,7 @@ class Reader:
             self.is_color_supported = False
 
         # show loader and start heavy resources processes
-        self.show_loader(subtext="initalizing ebook")
+        self.show_loader(subtext="initializing ebook")
 
         # main ebook object
         self.ebook = ebook
