@@ -21,7 +21,7 @@ dependencies = [
 [project.scripts]
 epy = "epy_reader.__main__:main"
 
-[tool.poetry.group.dev.dependencies]
+[tool.poetry.dev-dependencies]
 pynvim = "^0.4.3"
 black = "^22.8.0"
 coverage = "^6.5.0"
