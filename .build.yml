@@ -1,0 +1,22 @@
+image: fedora/latest
+oauth: git.sr.ht/REPOSITORIES:RW git.sr.ht/PROFILE:RO
+packages:
+  - hut
+  - python3-pip
+  - python3-black
+  - python3-build
+  - python3-mypy
+  - python3-poetry-core
+  - python3-neovim
+  - python3-pytest
+  - twine
+sources:
+  - https://git.sr.ht/~mcepl/epy
+tasks:
+  - build: |
+     cd epy
+     python3 -mpip install --user .
+  - test: |
+     cd epy
+     mypy --check-untyped-defs . || true
+     pytest -v
