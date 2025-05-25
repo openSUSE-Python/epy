@@ -246,7 +246,7 @@ class Reader:
             os.remove(path)
         return k
 
-    def show_loader(self, *, loader_str: str = "\u231B", subtext: Optional[str] = None):
+    def show_loader(self, *, loader_str: str = "\u231b", subtext: Optional[str] = None):
         self.screen.clear()
         rows, cols = self.screen.getmaxyx()
         middle_row = (rows - 1) // 2
@@ -421,9 +421,11 @@ class Reader:
                 stat.addstr(
                     0,
                     len(prompt),
-                    init_text
-                    if len(prompt + init_text) < cols
-                    else "..." + init_text[len(prompt) - cols + 4 :],
+                    (
+                        init_text
+                        if len(prompt + init_text) < cols
+                        else "..." + init_text[len(prompt) - cols + 4 :]
+                    ),
                 )
                 stat.refresh()
         except KeyboardInterrupt:
@@ -1415,9 +1417,11 @@ class Reader:
                             return dataclasses.replace(
                                 marked_reading_state,
                                 textwidth=reading_state.textwidth,
-                                rel_pctg=None
-                                if marked_reading_state.textwidth == reading_state.textwidth
-                                else marked_reading_state.rel_pctg,
+                                rel_pctg=(
+                                    None
+                                    if marked_reading_state.textwidth == reading_state.textwidth
+                                    else marked_reading_state.rel_pctg
+                                ),
                                 section="",
                             )
                         else:

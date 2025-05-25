@@ -337,10 +337,12 @@ def construct_relative_reading_state(
         content_index=index,
         textwidth=abs_reading_state.textwidth,
         row=abs_reading_state.row - cumulative_contents_lines + content_lines,
-        rel_pctg=abs_reading_state.rel_pctg
-        - ((cumulative_contents_lines - content_lines) / all_contents_lines)
-        if abs_reading_state.rel_pctg
-        else None,
+        rel_pctg=(
+            abs_reading_state.rel_pctg
+            - ((cumulative_contents_lines - content_lines) / all_contents_lines)
+            if abs_reading_state.rel_pctg
+            else None
+        ),
         section=abs_reading_state.section,
     )
 
