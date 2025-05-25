@@ -1,8 +1,10 @@
-[tool.poetry]
+[project]
 name = "epy-reader"
 version = "2023.6.11"
 description = "TUI Ebook Reader"
-authors = ["Benawi Adha <benawiadha@gmail.com>"]
+authors = [
+    {name = "Benawi Adha", email = "benawiadha@gmail.com"}
+]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://github.com/wustho/epy"
@@ -10,15 +12,16 @@ keywords = ["ebook", "epub", "epub3", "fb2", "mobi", "azw3", "TUI", "ebook reade
 packages = [
     { include = "epy_reader", from = "src" }
 ]
+requires-python = ">= 3.8"
+dependencies = [
+    "windows-curses ; platform_system == 'Windows'",
+    "standard-imghdr == 3.13.0",
+]
 
-[tool.poetry.scripts]
+[project.scripts]
 epy = "epy_reader.__main__:main"
 
-[tool.poetry.dependencies]
-python = "^3.8"
-windows-curses = { version = "*", markers = "platform_system == 'Windows'" }
-
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pynvim = "^0.4.3"
 black = "^22.8.0"
 coverage = "^6.5.0"
