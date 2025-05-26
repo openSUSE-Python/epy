@@ -4,6 +4,7 @@ import re
 import sys
 import textwrap
 from functools import wraps
+from multiprocessing.connection import Connection
 from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 from epy_reader.ebooks import URL, Azw, Ebook, Epub, FictionBook, Mobi
@@ -356,7 +357,7 @@ def construct_relative_reading_state(
 def count_letters(ebook: Ebook) -> LettersCount:
     per_content_counts: List[int] = []
     cumulative_counts: List[int] = []
-    # assert isinstance(ebook.contents, tuple)
+    assert isinstance(ebook.contents, tuple)
     for i in ebook.contents:
         content = ebook.get_raw_text(i)
         src_lines = parse_html(content)
@@ -367,9 +368,18 @@ def count_letters(ebook: Ebook) -> LettersCount:
     return LettersCount(all=sum(per_content_counts), cumulative=tuple(cumulative_counts))
 
 
-def count_letters_parallel(ebook: Ebook, child_conn) -> None:
-    child_conn.send(count_letters(ebook))
-    child_conn.close()
+def count_letters_parallel(filepath: str, conn: Connection):
+    """
+    Counts letters in an ebook in a separate process.
+    Receives the ebook's filepath and a connection for sending results.
+    """
+    # The child process opens its own ebook object
+    ebook_obj_in_child_process = get_ebook_obj(filepath)
+    ebook_obj_in_child_process.initialize()
+    letters_count = count_letters(ebook_obj_in_child_process)
+    ebook_obj_in_child_process.cleanup()
+    conn.send(letters_count)
+    conn.close()
 
 
 def construct_speaker(

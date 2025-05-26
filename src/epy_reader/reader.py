@@ -140,7 +140,8 @@ class Reader:
                 self._process_counting_letter = multiprocessing.Process(
                     name="epy-subprocess-counting-letters",
                     target=count_letters_parallel,
-                    args=(copy.deepcopy(self.ebook), self._proc_child),
+                    # Pass only the filepath, not the entire ebook object
+                    args=(self.ebook.path, self._proc_child),
                 )
                 # forking will raise
                 # zlib.error: Error -3 while decompressing data: invalid distance too far back

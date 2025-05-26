@@ -164,7 +164,7 @@ class Epub(Ebook):
         assert relative_toc is not None
         relative_toc_path = relative_toc.get("href")
         assert relative_toc_path is not None
-        toc_path = self.root_dirpath + relative_toc_path
+        toc_path = os.path.normpath(os.path.join(self.root_dirpath, relative_toc_path))
         toc = ET.parse(self.file.open(toc_path)).getroot()
         self.toc_entries = Epub._get_tocs(toc, version, contents)  # *self.contents (absolute path)
 
@@ -194,4 +194,5 @@ class Epub(Ebook):
         return impath, self.file.read(impath)
 
     def cleanup(self) -> None:
-        pass
+        if isinstance(self.file, zipfile.ZipFile):
+            self.file.close()
