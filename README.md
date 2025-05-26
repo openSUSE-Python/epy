@@ -58,6 +58,7 @@ This is just a fork of [epr](https://github.com/wustho/epr) with these extra fea
 - **Shift + m** Show metadata of the book
 - **t** Table of contents
 - **/** Search
+- **!** Start TTS
 - **b** Add bookmark
 - **Shift + b** Show bookmarks
 - **q** Quit
