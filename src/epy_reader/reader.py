@@ -230,6 +230,8 @@ class Reader:
     def open_image(self, pad, name, bstr):
         sfx = os.path.splitext(name)[1]
         fd, path = tempfile.mkstemp(suffix=sfx)
+        if self.image_viewer is None:
+            return NoUpdate()
         try:
             with os.fdopen(fd, "wb") as tmp:
                 # tmp.write(epub.file.read(src))
@@ -327,7 +329,7 @@ class Reader:
         if err == b"":
             return "Definition: " + word.upper(), out.decode(), self.keymap.DefineWord
         else:
-            return "Error: " + self.ext_dict_app, err.decode(), self.keymap.DefineWord
+            return "Error: " + (self.ext_dict_app if self.ext_dict_app else ""), err.decode(), self.keymap.DefineWord
 
     def show_win_choices_bookmarks(self):
         idx = 0
@@ -414,7 +416,8 @@ class Reader:
                     return Key(curses.KEY_RESIZE)
                 # elif len(init_text) <= maxlen:
                 else:
-                    init_text += ipt.char
+                    if hasattr(ipt, 'char'):
+                        init_text += ipt.char
 
                 stat.clear()
                 stat.addstr(0, 0, prompt, curses.A_REVERSE)
@@ -652,12 +655,16 @@ class Reader:
         self.screen.addstr(self.screen_rows - 1, 0, " Speaking! ", curses.A_REVERSE)
         self.screen.refresh()
         self.screen.timeout(1)
+
+        if self._tts_speaker is None:
+            return NoUpdate()
+
         try:
             self._tts_speaker.speak(text)
 
             while True:
                 if self._tts_speaker.is_done():
-                    k = self.keymap.PageDown[0]
+                    k: NoUpdate|Key = self.keymap.PageDown[0]
                     break
                 tmp = self.screen.getch()
                 k = NoUpdate() if tmp == -1 else Key(tmp)
@@ -740,7 +747,7 @@ class Reader:
 
     def get_all_book_contents(
         self, reading_state: ReadingState
-    ) -> Tuple[TextStructure, Tuple[TocEntry, ...], Union[Tuple[str, ...], Tuple[ET.Element, ...]]]:
+    ) -> Tuple[TextStructure, Tuple[TocEntry, ...], Tuple[Union[str, ET.Element], ...]]:
         if not self.seamless:
             raise RuntimeError("Reader.get_all_book_contents() only implemented when Seamless=True")
 
@@ -791,7 +798,7 @@ class Reader:
 
     def get_current_book_content(
         self, reading_state: ReadingState
-    ) -> Tuple[TextStructure, Tuple[TocEntry, ...], Union[Tuple[str, ...], Tuple[ET.Element, ...]]]:
+        ) -> Tuple[TextStructure, Tuple[TocEntry, ...], Tuple[Union[str, ET.Element], ...]]:
         contents = self.ebook.contents
         toc_entries = self.ebook.toc_entries
         content_path = contents[reading_state.content_index]
@@ -801,13 +808,13 @@ class Reader:
             textwidth=reading_state.textwidth,
             section_ids=set(toc_entry.section for toc_entry in toc_entries),  # type: ignore
         )
-        return text_structure, toc_entries, contents
+        return text_structure, toc_entries, tuple(contents)
 
     def read(self, reading_state: ReadingState) -> Union[ReadingState, Ebook]:
         # reusable loop indices
         i: Any
 
-        k = self.keymap.RegexSearch[0] if self.search_data else NoUpdate()
+        k: Union[Key, NoUpdate, str] = self.keymap.RegexSearch[0] if self.search_data else NoUpdate()
         rows, cols = self.screen.getmaxyx()
 
         mincols_doublespr = (
@@ -893,6 +900,7 @@ class Reader:
                 else:
                     count = int(countstring)
                 if k in tuple(Key(i) for i in range(48, 58)):  # i.e., k is a numeral
+                    assert isinstance(k, Key)
                     countstring = countstring + k.char
                 else:
                     if k in self.keymap.Quit:

@@ -48,6 +48,7 @@ class FictionBook(Ebook):
         # TODO
         toc_entries: List[TocEntry] = []
         for n, i in enumerate(self.contents):
+            assert isinstance(i, ET.Element), "Expected i to be an Element"
             title = i.find("FB2:title", FictionBook.NAMESPACE)
             if title is not None:
                 toc_entries.append(

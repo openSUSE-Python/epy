@@ -162,10 +162,10 @@ def dump_ebook_content(filepath: str) -> None:
             sys.exit("ERROR: Badly-structured ebook.\n" + str(e))
         for i in ebook.contents:
             content = ebook.get_raw_text(i)
-            src_lines = parse_html(content)
-            assert isinstance(src_lines, tuple)
+            src_lines_structure = parse_html(content, textwidth=0)
+            assert isinstance(src_lines_structure.text_lines, tuple)
             # sys.stdout.reconfigure(encoding="utf-8")  # Python>=3.7
-            for j in src_lines:
+            for j in src_lines_structure.text_lines:
                 sys.stdout.buffer.write((j + "\n\n").encode("utf-8"))
     finally:
         ebook.cleanup()
