@@ -7,11 +7,8 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import unquote, urljoin
 
 from epy_reader.ebooks.base import Ebook
+from epy_reader.config import DEBUG
 from epy_reader.models import BookMetadata, TocEntry
-
-
-# TODO: to be deprecated
-DEBUG = True
 
 
 class Epub(Ebook):
@@ -132,9 +129,7 @@ class Epub(Ebook):
                         )
                     )
         except AttributeError as e:
-            # TODO:
-            if DEBUG:
-                raise e
+            raise e
 
         return tuple(toc_entries)
 

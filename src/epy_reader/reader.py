@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import epy_reader.settings as settings
 from epy_reader.board import InfiniBoard
-from epy_reader.config import Config
+from epy_reader.config import Config, DEBUG
 from epy_reader.ebooks import Azw, Ebook, Epub, Mobi
 from epy_reader.lib import resolve_path
 from epy_reader.models import (
@@ -49,10 +49,6 @@ from epy_reader.utils import (
     safe_curs_set,
     text_win,
 )
-
-
-# TODO: to be deprecated
-DEBUG = True
 
 
 class Reader:

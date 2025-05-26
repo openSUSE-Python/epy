@@ -7,6 +7,7 @@ from typing import Mapping, Tuple, Union
 import epy_reader.settings as settings
 from epy_reader.models import AppData, Key
 
+DEBUG = True
 
 class Config(AppData):
     def __init__(self):
