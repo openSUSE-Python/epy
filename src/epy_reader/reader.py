@@ -23,6 +23,7 @@ from epy_reader.lib import resolve_path
 from epy_reader.models import (
     AppData,
     Direction,
+    FileHistory,
     InlineStyle,
     Key,
     LettersCount,
@@ -65,10 +66,9 @@ class Reader:
 
         self.seamless = self.setting.SeamlessBetweenChapters
 
-        self.history_file = os.path.join(config.prefix, "readline_history.txt")
-        self.epy_history = []
-        self.epy_history_index = -1  # Index in command_history, or len(command_history) for new input
-        self._current_input_before_history = "" # To store what user typed before going into history
+        # Initialize FileHistory instance
+        history_file_path = os.path.join(config.prefix, "epy_history.txt")
+        self.file_history = FileHistory(history_file_path)
 
         # keys that will make
         # windows exit and return the said key
@@ -85,9 +85,6 @@ class Reader:
         # screen color
         self.is_color_supported = curses.has_colors()
 
-        # Initialize history
-        self.load_command_history()
-
         curses.noecho()
         curses.cbreak()
         self.screen.keypad(True)
@@ -98,7 +95,7 @@ class Reader:
         self.screen.clear()
 
         # show loader and start heavy resources processes
-        self.show_loader(subtext="initalizing ebook")
+        self.show_loader(subtext="initializing ebook")
 
         # main ebook object
         self.ebook = ebook
@@ -141,23 +138,6 @@ class Reader:
         self._multiprocess_support: bool = False if multiprocessing.cpu_count() == 1 else True
         self._process_counting_letter: Optional[multiprocessing.Process] = None
         self.letters_count: Optional[LettersCount] = None
-
-    def load_command_history(self):
-        try:
-            with open(self.history_file, 'r') as f:
-                self.epy_history = [line.strip() for line in f if line.strip()]
-        except FileNotFoundError:
-            self.epy_history = []
-        self.epy_history_index = len(self.epy_history)
-
-    def save_command_history(self):
-        try:
-            with open(self.history_file, 'w') as f:
-                for cmd in self.epy_history:
-                    f.write(cmd + '\n')
-        except IOError as e:
-            # Log this warning properly in a real app
-            print(f"Warning: Could not save command history: {e}")
 
     def run_counting_letters(self):
         if self._multiprocess_support:
@@ -265,7 +245,7 @@ class Reader:
             os.remove(path)
         return k
 
-    def show_loader(self, *, loader_str: str = "\u231B", subtext: Optional[str] = None):
+    def show_loader(self, *, loader_str: str = "\u231b", subtext: Optional[str] = None):
         self.screen.clear()
         rows, cols = self.screen.getmaxyx()
         middle_row = (rows - 1) // 2
@@ -385,24 +365,18 @@ class Reader:
                  str for successful input
         """
         rows, cols = self.screen.getmaxyx()
-        
+
         # Create a new window for the prompt at the bottom of the screen
         # This window will overlay whatever is beneath it.
         stat = curses.newwin(1, cols, rows - 1, 0)
         if self.is_color_supported:
             stat.bkgd(self.screen.getbkgd())
         stat.keypad(True)
-        curses.echo(True) # Re-enable echoing for this specific input window
-        safe_curs_set(2) # Make cursor visible
+        curses.echo(True)  # Re-enable echoing for this specific input window
+        safe_curs_set(2)  # Make cursor visible
 
         init_text = ""
-        # When entering the prompt, if self.epy_history_index is already at the end,
-        # it means we are starting a new input.
-        # If we came from history, init_text might be pre-filled.
-        # Reset self.epy_history_index to point to 'new input' space.
-        self.epy_history_index = len(self.epy_history)
-        self._current_input_before_history = ""
-
+        self.file_history.reset_index()  # Reset history index for a new prompt
 
         self._draw_prompt_line(stat, prompt, init_text, cols)
 
@@ -421,10 +395,7 @@ class Reader:
                     stat.refresh()
                     curses.echo(False)
                     safe_curs_set(0)
-                    if init_text: # Only add non-empty inputs to history
-                        if not self.epy_history or self.epy_history[-1] != init_text:
-                            self.epy_history.append(init_text)
-                            # You might want to limit history size here
+                    self.file_history.add_command(init_text)  # Add to history
                     return init_text
                     # The original returned NoUpdate() for empty init_text,
                     # so you can add: `else: return NoUpdate()` if needed.
@@ -438,46 +409,20 @@ class Reader:
                     safe_curs_set(0)
                     return Key(curses.KEY_RESIZE)
                 elif ipt == Key(curses.KEY_UP):
-                    if self.epy_history:
-                        if self.epy_history_index == len(self.epy_history):
-                            # Store current input before navigating up, if any
-                            self._current_input_before_history = init_text
-
-                # stat.clear()
-                # stat.addstr(0, 0, prompt, curses.A_REVERSE)
-                # stat.addstr(
-                #     0,
-                #     len(prompt),
-                #     (
-                #         init_text
-                #         if len(prompt + init_text) < cols
-                #         else "..." + init_text[len(prompt) - cols + 4 :]
-                #     ),
-                # )
-                # stat.refresh()
-                        if self.epy_history_index > 0:
-                            self.epy_history_index -= 1
-                            init_text = self.epy_history[self.epy_history_index]
-                        # else: Already at the oldest history entry, do nothing or beep
+                    # Navigate up in history
+                    history_item = self.file_history.navigate_up(init_text)
+                    if history_item is not None:
+                        init_text = history_item
                 elif ipt == Key(curses.KEY_DOWN):
-                    if self.epy_history:
-                        if self.epy_history_index < len(self.epy_history) - 1:
-                            self.epy_history_index += 1
-                            init_text = self.epy_history[self.epy_history_index]
-                        elif self.epy_history_index == len(self.epy_history) - 1:
-                            # If we were at the last history item and pressed DOWN again
-                            # go to the stored new input, or clear if none
-                            init_text = self._current_input_before_history
-                            self.epy_history_index = len(self.epy_history) # Point to after last history
-                        # else: Already at the newest history entry, do nothing or beep
+                    # Navigate down in history
+                    history_item = self.file_history.navigate_down()
+                    if history_item is not None:  # Can be empty string if at bottom/no history
+                        init_text = history_item
                 else:
-                    # If any other character is typed, it's a new input
-                    # Reset history traversal if we were in history mode
-                    if self.epy_history_index < len(self.epy_history):
-                        self.epy_history_index = len(self.epy_history)
-                        self._current_input_before_history = "" # Clear stored input
-                    init_text += ipt.char # Append the character
-
+                    # If any other character is typed, it's a new input.
+                    # This also resets history navigation.
+                    self.file_history.reset_index()
+                    init_text += ipt.char  # Append the character
 
                 # Redraw the prompt line within its own window
                 self._draw_prompt_line(stat, prompt, init_text, cols)
@@ -491,31 +436,30 @@ class Reader:
             # Ensure curses.echo is off and cursor is hidden after any exit path
             curses.echo(False)
             safe_curs_set(0)
-            # You might need to refresh the underlying screen if this prompt clears itself
-            # self.screen.refresh() # Or a specific pad/window refresh
 
     def _draw_prompt_line(self, window, prompt, text, max_cols):
         """Helper to draw the input line, handling truncation."""
-        window.clear() # Clear only this prompt window
-        
-        # Calculate actual displayed text
-        full_line = prompt + text
-        display_text = text
-        
-        # Truncate if too long (assuming prompt takes fixed space)
-        if len(full_line) >= max_cols:
-            # Adjust to show a '...' prefix
-            display_text = "..." + text[len(full_line) - max_cols + 3:]
-            # Ensure the prompt doesn't get truncated by this logic if it's long
-            if len(prompt) + len(display_text) > max_cols:
-                # This case means even with truncation, prompt+text is too long
-                # You might need more sophisticated truncation for very long prompts
-                display_text = display_text[len(prompt) - (max_cols - 3):] # Adjust based on prompt length
-                display_text = "..." + display_text[3:]
+        window.clear()  # Clear only this prompt window
 
+        # Calculate actual displayed text length including prompt
+        full_line_len = len(prompt) + len(text)
+
+        # Determine how much of the input text to display
+        display_text = text
+        if full_line_len > max_cols:
+            # Calculate how many characters of text we can show after prompt and "..."
+            available_text_width = max_cols - len(prompt) - 3  # 3 for "..."
+            if available_text_width < 0:  # If prompt itself is too long
+                display_text = ""  # No space for text
+            else:
+                display_text = "..." + text[len(text) - available_text_width :]
 
         window.addstr(0, 0, prompt, curses.A_REVERSE)
         window.addstr(0, len(prompt), display_text)
+
+        # Position cursor at the end of the displayed text
+        window.move(0, len(prompt) + len(display_text))
+        window.refresh()  # Only refresh this specific window
 
     def searching(
         self, board: InfiniBoard, src: Sequence[str], reading_state: ReadingState, tot
@@ -578,8 +522,12 @@ class Reader:
                 while True:
                     if s in self.keymap.Quit:
                         self.search_data = None
-                        self.screen.clear()
-                        self.screen.refresh()
+                        # for i in found:
+                        #     pad.chgat(i[0], i[1], i[2], pad.getbkgd())
+                        board.feed_temporary_style()
+                        # pad.format()
+                        # self.screen.clear()
+                        # self.screen.refresh()
                         return reading_state
                     # TODO: maybe >= 0?
                     elif s == Key("n") and reading_state.content_index == 0:
@@ -787,14 +735,12 @@ class Reader:
     def cleanup(self) -> None:
         self.ebook.cleanup()
 
-        self.save_command_history()
+        self.file_history.save_history()
 
         if isinstance(self._process_counting_letter, multiprocessing.Process):
             if self._process_counting_letter.is_alive():
                 self._process_counting_letter.terminate()
                 # weird python multiprocessing issue, need to call .join() before .close()
-                # ValueError: Cannot close a process while it is still running.
-                # You should first call join() or terminate().
                 self._process_counting_letter.join()
                 self._process_counting_letter.close()
 
@@ -1501,9 +1447,11 @@ class Reader:
                             return dataclasses.replace(
                                 marked_reading_state,
                                 textwidth=reading_state.textwidth,
-                                rel_pctg=None
-                                if marked_reading_state.textwidth == reading_state.textwidth
-                                else marked_reading_state.rel_pctg,
+                                rel_pctg=(
+                                    None
+                                    if marked_reading_state.textwidth == reading_state.textwidth
+                                    else marked_reading_state.rel_pctg
+                                ),
                                 section="",
                             )
                         else:

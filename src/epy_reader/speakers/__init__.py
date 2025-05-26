@@ -1,9 +1,4 @@
-__all__ = [
-    "SpeakerBaseModel",
-    "SpeakerMimic",
-    "SpeakerPico",
-    "SpeakerGttsMPV"
-]
+__all__ = ["SpeakerBaseModel", "SpeakerMimic", "SpeakerPico", "SpeakerGttsMPV"]
 
 from epy_reader.speakers.base import SpeakerBaseModel
 from epy_reader.speakers.mimic import SpeakerMimic
