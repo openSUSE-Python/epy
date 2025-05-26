@@ -52,7 +52,7 @@ from epy_reader.utils import (
 
 
 # TODO: to be deprecated
-DEBUG = False
+DEBUG = True
 
 
 class Reader:

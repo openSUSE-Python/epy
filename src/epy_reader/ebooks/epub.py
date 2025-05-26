@@ -11,7 +11,7 @@ from epy_reader.models import BookMetadata, TocEntry
 
 
 # TODO: to be deprecated
-DEBUG = False
+DEBUG = True
 
 
 class Epub(Ebook):
