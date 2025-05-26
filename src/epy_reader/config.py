@@ -42,7 +42,7 @@ class Config(AppData):
 
     @property
     def filepath(self) -> str:
-        return os.path.join(self.prefix, "configuration.json") if self.prefix else os.devnull
+        return os.path.join(self.prefix, "configuration.json")
 
     def save(self, cfg_dict):
         with open(self.filepath, "w") as file:

@@ -206,26 +206,42 @@ class Key:
     def __hash__(self) -> int:
         return hash(self.value)
 
+def _get_app_config_dir() -> str:
+    """
+    Calculates and returns the application's configuration directory.
+    Follows XDG Base Directory Specification:
+    1. Uses XDG_CONFIG_HOME if set.
+    2. Falls back to ~/.config/ if XDG_CONFIG_HOME is not set.
+    3. Appends 'epy' to the base directory.
+    4. Ensures the directory exists.
+
+    Example usage elsewhere in your code:
+
+    import epy_reader.settings as settings
+    history_file_path = os.path.join(settings.DEFAULT_PREFIX, "epy_history.txt")
+    """
+    config_home = os.environ.get("XDG_CONFIG_HOME")
+
+    if config_home is None:
+        # Fallback to ~/.config/
+        base_dir = os.path.join(os.path.expanduser("~"), ".config")
+    else:
+        base_dir = config_home
+
+    app_config_dir = os.path.join(base_dir, "epy")
+
+    # Ensure the directory exists
+    os.makedirs(app_config_dir, exist_ok=True)
+
+    return app_config_dir
+
+# You can then use this function to define your default prefix:
+DEFAULT_PREFIX: str = _get_app_config_dir()
 
 class AppData:
     @property
-    def prefix(self) -> Optional[str]:
-        """Return None if there exists no homedir | userdir"""
-        prefix: Optional[str] = None
-
-        # Works correctly both on Unix and Windows
-        homedir = os.path.expanduser("~")
-
-        if homedir:
-            if os.path.isdir(os.path.join(homedir, ".config")):
-                prefix = os.path.join(homedir, ".config", "epy")
-            else:
-                prefix = os.path.join(homedir, ".epy")
-
-        if prefix:
-            os.makedirs(prefix, exist_ok=True)
-
-        return prefix
+    def prefix(self) -> str:
+        return DEFAULT_PREFIX
 
 
 # Define the NamedTuple for history entries
