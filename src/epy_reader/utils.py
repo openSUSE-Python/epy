@@ -107,7 +107,7 @@ def choice_win(allowdel=False):
             chwin.addstr(2, 2, "-" * len(title))
             if allowdel:
                 chwin.addstr(3, 2, "HINT: Press 'd' to delete.")
-            key_chwin = 0
+            key_chwin: Key = Key(0)
 
             totlines = len(ch_list)
             chwin.refresh()
@@ -140,7 +140,7 @@ def choice_win(allowdel=False):
                 else:
                     count = int(countstring)
                 if key_chwin in tuple(Key(i) for i in range(48, 58)):  # i.e., k is a numeral
-                    countstring = countstring + key_chwin.char
+                    countstring = f"{countstring}{key_chwin}"
                 else:
                     if key_chwin in self.keymap.ScrollUp + self.keymap.PageUp:
                         index -= count
@@ -200,7 +200,9 @@ def choice_win(allowdel=False):
                     att = curses.A_REVERSE if index == n else curses.A_NORMAL
                     pre = ">>" if index == n else "  "
                     pad.addstr(n, 0, pre)
-                    pad.chgat(n, 0, span[n], pad.getbkgd() | att)
+                    bkgd_out = pad.getbkgd()
+                    bkgd_attr:int = bkgd_out[1] if isinstance(bkgd_out, tuple) else bkgd_out
+                    pad.chgat(n, 0, span[n], bkgd_attr | att)
 
                 pad.refresh(y, 0, Y + 4 + (1 if allowdel else 0), X + 4, rows - 5, cols - 6)
                 # pad.refresh(y, 0, Y+5, X+4, rows - 5, cols - 6)
@@ -360,10 +362,11 @@ def count_letters(ebook: Ebook) -> LettersCount:
     assert isinstance(ebook.contents, tuple)
     for i in ebook.contents:
         content = ebook.get_raw_text(i)
-        src_lines = parse_html(content)
-        assert isinstance(src_lines, tuple)
+        src_lines_structure = parse_html(content, textwidth=0) # Pass 0 to get only text_lines
+        # Now src_lines_structure is TextStructure. You need to access its text_lines attribute.
+        assert isinstance(src_lines_structure.text_lines, tuple)
         cumulative_counts.append(sum(per_content_counts))
-        per_content_counts.append(sum([len(re.sub(r"\s", "", j)) for j in src_lines]))
+        per_content_counts.append(sum([len(re.sub(r"\s", "", j)) for j in src_lines_structure.text_lines]))
 
     return LettersCount(all=sum(per_content_counts), cumulative=tuple(cumulative_counts))
 

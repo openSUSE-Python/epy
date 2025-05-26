@@ -2,18 +2,19 @@ import dataclasses
 import json
 import os
 import sys
-from typing import Mapping, Tuple, Union
+from typing import Any, Mapping, Tuple, Union
 
 import epy_reader.settings as settings
 from epy_reader.models import AppData, Key
 
 DEBUG = True
 
+
 class Config(AppData):
     def __init__(self):
         super().__init__()
-        setting_dict = dataclasses.asdict(settings.Settings())
-        keymap_dict = dataclasses.asdict(settings.CfgDefaultKeymaps())
+        setting_dict: Mapping[str, Any] = dataclasses.asdict(settings.Settings())
+        keymap_dict: Mapping[str, Any] = dataclasses.asdict(settings.CfgDefaultKeymaps())
         keymap_builtin_dict = dataclasses.asdict(settings.CfgBuiltinKeymaps())
 
         if os.path.isfile(self.filepath):
