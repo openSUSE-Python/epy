@@ -57,12 +57,12 @@ DEBUG = False
 class Reader:
     def __init__(self, screen, ebook: Ebook, config: Config, state: State):
 
-        self.setting = config.setting
+        self.settings = config.settings
         self.keymap = config.keymap
         # to build help menu text
         self.keymap_user_dict = config.keymap_user_dict
 
-        self.seamless = self.setting.SeamlessBetweenChapters
+        self.seamless = self.settings.SeamlessBetweenChapters
 
         # keys that will make
         # windows exit and return the said key
@@ -78,7 +78,7 @@ class Reader:
         self.screen = screen
         self.screen.keypad(True)
         safe_curs_set(0)
-        if self.setting.MouseSupport:
+        if self.settings.MouseSupport:
             curses.mousemask(-1)
         # curses.mouseinterval(0)
         self.screen.clear()
@@ -116,21 +116,21 @@ class Reader:
         self.page_animation: Optional[Direction] = None
 
         # show reading progress
-        self.show_reading_progress: bool = self.setting.ShowProgressIndicator
+        self.show_reading_progress: bool = self.settings.ShowProgressIndicator
         self.reading_progress: Optional[float] = None  # calculate after count_letters()
 
         # search storage
         self.search_data: Optional[SearchData] = None
 
         # double spread
-        self.spread = 2 if self.setting.StartWithDoubleSpread else 1
+        self.spread = 2 if self.settings.StartWithDoubleSpread else 1
 
         # jumps marker container
         self.jump_list: Dict[str, ReadingState] = dict()
 
         # TTS speaker utils
         self._tts_speaker: Optional[SpeakerBaseModel] = construct_speaker(
-            self.setting.PreferredTTSEngine, self.setting.TTSEngineArgs
+            self.settings.PreferredTTSEngine, self.settings.TTSEngineArgs
         )
         self.tts_support: bool = bool(self._tts_speaker)
         self.is_speaking: bool = False
@@ -194,8 +194,8 @@ class Reader:
     def ext_dict_app(self) -> Optional[str]:
         self._ext_dict_app: Optional[str] = None
 
-        if shutil.which(self.setting.DictionaryClient.split()[0]):
-            self._ext_dict_app = self.setting.DictionaryClient
+        if shutil.which(self.settings.DictionaryClient.split()[0]):
+            self._ext_dict_app = self.settings.DictionaryClient
         else:
             for i in settings.DICT_PRESET_LIST:
                 if shutil.which(i) is not None:
@@ -210,8 +210,8 @@ class Reader:
     def image_viewer(self) -> Optional[str]:
         self._image_viewer: Optional[str] = None
 
-        if shutil.which(self.setting.DefaultViewer.split()[0]) is not None:
-            self._image_viewer = self.setting.DefaultViewer
+        if shutil.which(self.settings.DefaultViewer.split()[0]) is not None:
+            self._image_viewer = self.settings.DefaultViewer
         elif sys.platform == "win32":
             self._image_viewer = "start"
         elif sys.platform == "darwin":
@@ -246,7 +246,7 @@ class Reader:
             os.remove(path)
         return k
 
-    def show_loader(self, *, loader_str: str = "\u231B", subtext: Optional[str] = None):
+    def show_loader(self, *, loader_str: str = "\u231b", subtext: Optional[str] = None):
         self.screen.clear()
         rows, cols = self.screen.getmaxyx()
         middle_row = (rows - 1) // 2
@@ -370,8 +370,16 @@ class Reader:
         # pad.refresh(y, 0, 0, x, rows-2, x+width)
         rows, cols = self.screen.getmaxyx()
         stat = curses.newwin(1, cols, rows - 1, 0)
-        if self.is_color_supported:
-            stat.bkgd(self.screen.getbkgd())
+        if self.is_color_supported and not self.settings.NoColors:
+            stat.bkgd(curses.color_pair(1))
+        # Instead, set a default color pair that might be the terminal's default
+        # or just avoid setting `bkgd` on this window, relying on the parent's attributes.
+        # If you need to ensure a contrasting prompt, you might need to
+        # initialize a specific color pair *if* curses.start_color() is called
+        # elsewhere (which we're trying to avoid here for the main reading area).
+        # For this specific prompt, if it's drawing *over* the content,
+        # curses.A_REVERSE on the prompt line usually provides good contrast.
+
         stat.keypad(True)
         curses.echo(True)
         safe_curs_set(2)
@@ -421,9 +429,11 @@ class Reader:
                 stat.addstr(
                     0,
                     len(prompt),
-                    init_text
-                    if len(prompt + init_text) < cols
-                    else "..." + init_text[len(prompt) - cols + 4 :],
+                    (
+                        init_text
+                        if len(prompt + init_text) < cols
+                        else "..." + init_text[len(prompt) - cols + 4 :]
+                    ),
                 )
                 stat.refresh()
         except KeyboardInterrupt:
@@ -443,7 +453,7 @@ class Reader:
         rows, cols = self.screen.getmaxyx()
         # unnecessary
         # if self.spread == 2:
-        #     reading_state = dataclasses.replace(reading_state, textwidth=(cols - 7) // 2)
+        #    reading_state = dataclasses.replace(reading_state, textwidth=(cols - 7) // 2)
 
         x = (cols - reading_state.textwidth) // 2
         if self.spread == 1:
@@ -553,7 +563,7 @@ class Reader:
             if s in self.keymap.Quit:
                 self.search_data = None
                 # for i in found:
-                #     pad.chgat(i[0], i[1], i[2], pad.getbkgd())
+                #    pad.chgat(i[0], i[1], i[2], pad.getbkgd())
                 board.feed_temporary_style()
                 # pad.format()
                 # self.screen.clear()
@@ -610,15 +620,15 @@ class Reader:
             elif s == Key(curses.KEY_RESIZE):
                 return Key(curses.KEY_RESIZE)
 
-            # if reading_state.row + rows - 1 > pad.chunks[pad.find_chunkidx(reading_state.row)]:
-            #     reading_state = dataclasses.replace(
-            #         reading_state, row=pad.chunks[pad.find_chunkidx(reading_state.row)] + 1
-            #     )
+            # if reading_state.row + rows - 1 > board.chunks[board.find_chunkidx(reading_state.row)]:
+            #    reading_state = dataclasses.replace(
+            #        reading_state, row=board.chunks[board.find_chunkidx(reading_state.row)] + 1
+            #    )
 
             while found[sidx][0] not in list(
                 range(reading_state.row, reading_state.row + (rows - 1) * self.spread)
             ):
-                if found[sidx][0] > reading_state.row:
+                if found[sidx][0] > reading_state.row:  # This check is always true TODO
                     reading_state = dataclasses.replace(
                         reading_state, row=reading_state.row + ((rows - 1) * self.spread)
                     )
@@ -630,7 +640,7 @@ class Reader:
                         reading_state = dataclasses.replace(reading_state, row=0)
 
             # formats = [InlineStyle(row=i[0], col=i[1], n_letters=i[2], attr=curses.A_REVERSE) for i in found]
-            # pad.feed_style(formats)
+            # board.feed_style(formats)
             styles: List[InlineStyle] = []
             for n, i in enumerate(found):
                 attr = curses.A_REVERSE if n == sidx else curses.A_NORMAL
@@ -640,7 +650,7 @@ class Reader:
                 )
             board.feed_temporary_style(tuple(styles))
 
-            self.screen.clear()
+            self.screen.clear()  # Clears the whole screen
             self.screen.addstr(rows - 1, 0, msg, curses.A_REVERSE)
             self.screen.refresh()
             # pad.refresh(reading_state.row, 0, 0, x, rows - 2, x + reading_state.textwidth)
@@ -860,6 +870,7 @@ class Reader:
 
         board = InfiniBoard(
             screen=self.screen,
+            settings=self.settings,
             text=text_structure.text_lines,
             textwidth=reading_state.textwidth,
             default_style=text_structure.formatting,
@@ -924,7 +935,7 @@ class Reader:
                             and reading_state.content_index == len(contents) - 1
                         ):
                             self.is_speaking = False
-                        continue
+                            continue
 
                     elif k in self.keymap.DoubleSpreadToggle:
                         if cols < mincols_doublespr:
@@ -1026,9 +1037,9 @@ class Reader:
                             )
 
                     # elif k in K["HalfScreenUp"] | K["HalfScreenDown"]:
-                    #     countstring = str(rows // 2)
-                    #     k = list(K["ScrollUp" if k in K["HalfScreenUp"] else "ScrollDown"])[0]
-                    #     continue
+                    #    countstring = str(rows // 2)
+                    #    k = list(K["ScrollUp" if k in K["HalfScreenUp"] else "ScrollDown"])[0]
+                    #    continue
 
                     elif k in self.keymap.NextChapter:
                         ntoc = find_current_content_index(
@@ -1295,9 +1306,9 @@ class Reader:
                                     else:
                                         current_content_index = reading_state.content_index
                                         # for n, content in enumerate(self.ebook.contents):
-                                        #     content_path = content
-                                        #     if reading_state.row < sum(totlines_per_content[:n]):
-                                        #         break
+                                        #    content_path = content
+                                        #    if reading_state.row < sum(totlines_per_content[:n]):
+                                        #       break
 
                                     content_path = self.ebook.contents[current_content_index]
                                     assert isinstance(content_path, str)
@@ -1310,24 +1321,25 @@ class Reader:
                                 if DEBUG:
                                     raise e
 
-                    elif (
-                        k in self.keymap.SwitchColor
-                        and self.is_color_supported
-                        and countstring in {"", "0", "1", "2"}
-                    ):
-                        if countstring == "":
-                            count_color = curses.pair_number(self.screen.getbkgd())
-                            if count_color not in {2, 3}:
-                                count_color = 1
-                            count_color = count_color % 3
-                        else:
-                            count_color = count
-                        self.screen.bkgd(curses.color_pair(count_color + 1))
-                        # pad.format()
+                    elif k in self.keymap.SwitchColor and self.is_color_supported:
+                        if not self.settings.NoColors:
+                            current_pair = curses.pair_number(self.screen.getbkgd())
+                            # Cycle between pair 1 and 2
+                            next_pair_index = (current_pair % 2) + 1
+                            self.screen.bkgd(curses.color_pair(next_pair_index))
+                            # Update board's internal screen
+                            # background if it's needed for its own calculations
+                            # Not directly needed if board uses A_NORMAL
+                            # board.screen.bkgd(curses.color_pair(next_pair_index))
+
+                        # Invalidate previous text to force redraw with new colors
+                        # This is implicit by returning
+                        # ReadingState, which triggers a full redraw.
                         return ReadingState(
                             content_index=reading_state.content_index,
                             textwidth=reading_state.textwidth,
                             row=reading_state.row,
+                            rel_pctg=reading_state.row / totlines,  # Preserve progress
                         )
 
                     elif k in self.keymap.AddBookmark:
@@ -1415,9 +1427,11 @@ class Reader:
                             return dataclasses.replace(
                                 marked_reading_state,
                                 textwidth=reading_state.textwidth,
-                                rel_pctg=None
-                                if marked_reading_state.textwidth == reading_state.textwidth
-                                else marked_reading_state.rel_pctg,
+                                rel_pctg=(
+                                    None
+                                    if marked_reading_state.textwidth == reading_state.textwidth
+                                    else marked_reading_state.rel_pctg
+                                ),
                                 section="",
                             )
                         else:
@@ -1480,6 +1494,7 @@ class Reader:
                                 content_index=reading_state.content_index,
                                 textwidth=reading_state.textwidth,
                                 row=reading_state.row,
+                                rel_pctg=reading_state.row / totlines,
                             )
 
                     countstring = ""
@@ -1497,7 +1512,7 @@ class Reader:
                     )
 
                 try:
-                    if self.setting.PageScrollAnimation and self.page_animation:
+                    if self.settings.PageScrollAnimation and self.page_animation:
                         self.screen.clear()
                         for i in range(1, reading_state.textwidth + 1):
                             curses.napms(1)
@@ -1556,7 +1571,7 @@ class Reader:
                     elif mouse_event[4] == curses.BUTTON2_CLICKED:
                         k = self.keymap.TTSToggle[0]
 
-                if checkpoint_row:
+                if checkpoint_row is not None:
                     board.feed_temporary_style()
                     checkpoint_row = None
 

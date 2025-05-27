@@ -40,6 +40,7 @@ class Settings:
     PageScrollAnimation: bool = True
     MouseSupport: bool = False
     StartWithDoubleSpread: bool = False
+    NoColors: int = False
     # -1 is default terminal fg/bg colors
     DefaultColorFG: int = -1
     DefaultColorBG: int = -1
