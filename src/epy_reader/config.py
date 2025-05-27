@@ -34,7 +34,7 @@ class Config(AppData):
         if sys.platform == "win32":
             setting_dict["PageScrollAnimation"] = False
 
-        self.setting = settings.Settings(**setting_dict)
+        self.settings = settings.Settings(**setting_dict)
         self.keymap = settings.Keymap(**keymap_updated)
         # to build help menu text
         self.keymap_user_dict = keymap_dict

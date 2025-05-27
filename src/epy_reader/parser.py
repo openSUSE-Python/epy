@@ -282,123 +282,128 @@ class HTMLtoLines(HTMLParser):
                 self.idpref.add(len(self.text) - 1)
 
     def get_structured_text(
-            self, textwidth: int, starting_line: int = 0
-        ) -> TextStructure: # Keep return type as TextStructure
+        self, textwidth: int, starting_line: int = 0
+    ) -> TextStructure:  # Keep return type as TextStructure
 
-            if textwidth == 0:
-                return TextStructure(
-                    text_lines=tuple(self.text),
-                    image_maps=dict(),
-                    section_rows=dict(),
-                    formatting=tuple(),
+        if textwidth == 0:
+            return TextStructure(
+                text_lines=tuple(self.text),
+                image_maps=dict(),
+                section_rows=dict(),
+                formatting=tuple(),
+            )
+
+        text: List[str] = []
+        images: Dict[int, str] = dict()
+        sect: Dict[str, int] = dict()
+        formatting: List[InlineStyle] = []
+
+        italic_spans: List[TextSpan] = HTMLtoLines._mark_to_spans(self.text, self.italic_marks)
+        bold_spans: List[TextSpan] = HTMLtoLines._mark_to_spans(self.text, self.bold_marks)
+        italic_groups = HTMLtoLines._group_spans_by_row(italic_spans)
+        bold_groups = HTMLtoLines._group_spans_by_row(bold_spans)
+
+        for n, line in enumerate(self.text):
+
+            startline = len(text)
+            if n in self.sectsindex.keys():
+                sect[self.sectsindex[n]] = starting_line + len(text)
+            if n in self.idhead:
+                # textwidth is now guaranteed to be an int here
+                text += [line.center(textwidth)] + [""]  # Line 319 (corrected)
+                formatting += [
+                    InlineStyle(
+                        row=starting_line + i, col=0, n_letters=len(text[i]), attr=self.attr_bold
+                    )
+                    for i in range(startline, len(text))
+                ]
+            elif n in self.idinde:
+                text += ["  " + i for i in textwrap.wrap(line, textwidth - 3)] + [
+                    ""
+                ]  # Line 327 (corrected)
+            elif n in self.idbull:
+                tmp = textwrap.wrap(line, textwidth - 3)  # Line 329 (corrected)
+                text += [" - " + i if i == tmp[0] else "  " + i for i in tmp] + [""]
+            elif n in self.idpref:
+                tmp = line.splitlines()
+                wraptmp = []
+                for tmp_line in tmp:
+                    wraptmp += [
+                        i for i in textwrap.wrap(tmp_line, textwidth - 6)
+                    ]  # Line 335 (corrected)
+                text += ["  " + i for i in wraptmp] + [""]
+            elif n in self.idimgs:
+                images[starting_line + len(text)] = self.imgs[n]
+                # textwidth is now guaranteed to be an int here
+                text += [line.center(textwidth)]  # Line 339 (corrected)
+                formatting += [
+                    InlineStyle(
+                        row=starting_line + len(text) - 1,
+                        col=0,
+                        n_letters=len(text[-1]),
+                        attr=self.attr_bold,
+                    )
+                ]
+                text += [""]
+            else:
+                text += textwrap.wrap(line, textwidth) + [""]  # Line 350 (corrected)
+
+            endline = len(text)
+
+            left_adjustment = 3 if n in self.idbull | self.idinde else 0
+
+            for spans in italic_groups.get(n, []):
+                italics = HTMLtoLines._adjust_wrapped_spans(
+                    text[startline:endline],
+                    spans,
+                    line_adjustment=startline,
+                    left_adjustment=left_adjustment,
                 )
-
-            text: List[str] = []
-            images: Dict[int, str] = dict()
-            sect: Dict[str, int] = dict()
-            formatting: List[InlineStyle] = []
-
-            italic_spans: List[TextSpan] = HTMLtoLines._mark_to_spans(self.text, self.italic_marks)
-            bold_spans: List[TextSpan] = HTMLtoLines._mark_to_spans(self.text, self.bold_marks)
-            italic_groups = HTMLtoLines._group_spans_by_row(italic_spans)
-            bold_groups = HTMLtoLines._group_spans_by_row(bold_spans)
-
-            for n, line in enumerate(self.text):
-
-                startline = len(text)
-                if n in self.sectsindex.keys():
-                    sect[self.sectsindex[n]] = starting_line + len(text)
-                if n in self.idhead:
-                    # textwidth is now guaranteed to be an int here
-                    text += [line.center(textwidth)] + [""] # Line 319 (corrected)
-                    formatting += [
+                for span in italics:
+                    formatting.append(
                         InlineStyle(
-                            row=starting_line + i, col=0, n_letters=len(text[i]), attr=self.attr_bold
+                            row=starting_line + span.start.row,
+                            col=span.start.col,
+                            n_letters=span.n_letters,
+                            attr=self.attr_italic,
                         )
-                        for i in range(startline, len(text))
-                    ]
-                elif n in self.idinde:
-                    text += ["  " + i for i in textwrap.wrap(line, textwidth - 3)] + [""] # Line 327 (corrected)
-                elif n in self.idbull:
-                    tmp = textwrap.wrap(line, textwidth - 3) # Line 329 (corrected)
-                    text += [" - " + i if i == tmp[0] else "  " + i for i in tmp] + [""]
-                elif n in self.idpref:
-                    tmp = line.splitlines()
-                    wraptmp = []
-                    for tmp_line in tmp:
-                        wraptmp += [i for i in textwrap.wrap(tmp_line, textwidth - 6)] # Line 335 (corrected)
-                    text += ["  " + i for i in wraptmp] + [""]
-                elif n in self.idimgs:
-                    images[starting_line + len(text)] = self.imgs[n]
-                    # textwidth is now guaranteed to be an int here
-                    text += [line.center(textwidth)] # Line 339 (corrected)
-                    formatting += [
+                    )
+
+            for spans in bold_groups.get(n, []):
+                bolds = HTMLtoLines._adjust_wrapped_spans(
+                    text[startline:endline],
+                    spans,
+                    line_adjustment=startline,
+                    left_adjustment=left_adjustment,
+                )
+                for span in bolds:
+                    formatting.append(
                         InlineStyle(
-                            row=starting_line + len(text) - 1,
-                            col=0,
-                            n_letters=len(text[-1]),
+                            row=starting_line + span.start.row,
+                            col=span.start.col,
+                            n_letters=span.n_letters,
                             attr=self.attr_bold,
                         )
-                    ]
-                    text += [""]
-                else:
-                    text += textwrap.wrap(line, textwidth) + [""] # Line 350 (corrected)
-
-                endline = len(text)
-
-                left_adjustment = 3 if n in self.idbull | self.idinde else 0
-
-                for spans in italic_groups.get(n, []):
-                    italics = HTMLtoLines._adjust_wrapped_spans(
-                        text[startline:endline],
-                        spans,
-                        line_adjustment=startline,
-                        left_adjustment=left_adjustment,
                     )
-                    for span in italics:
-                        formatting.append(
-                            InlineStyle(
-                                row=starting_line + span.start.row,
-                                col=span.start.col,
-                                n_letters=span.n_letters,
-                                attr=self.attr_italic,
-                            )
-                        )
 
-                for spans in bold_groups.get(n, []):
-                    bolds = HTMLtoLines._adjust_wrapped_spans(
-                        text[startline:endline],
-                        spans,
-                        line_adjustment=startline,
-                        left_adjustment=left_adjustment,
-                    )
-                    for span in bolds:
-                        formatting.append(
-                            InlineStyle(
-                                row=starting_line + span.start.row,
-                                col=span.start.col,
-                                n_letters=span.n_letters,
-                                attr=self.attr_bold,
-                            )
-                        )
+        # chapter suffix
+        text += ["***".center(textwidth)]  # Line 391 (corrected)
 
-            # chapter suffix
-            text += ["***".center(textwidth)] # Line 391 (corrected)
+        return TextStructure(
+            text_lines=tuple(text),
+            image_maps=images,
+            section_rows=sect,
+            formatting=tuple(formatting),
+        )
 
-            return TextStructure(
-                text_lines=tuple(text),
-                image_maps=images,
-                section_rows=sect,
-                formatting=tuple(formatting),
-            )
 
 def parse_html(
     html_src: str,
     *,
-    textwidth: int, # Changed from Optional[int]
+    textwidth: int,  # Changed from Optional[int]
     section_ids: Optional[Set[str]] = None,
     starting_line: int = 0,
-    ) -> TextStructure:
+) -> TextStructure:
     """
     Parse html string into TextStructure
 

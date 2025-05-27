@@ -201,7 +201,7 @@ def choice_win(allowdel=False):
                     pre = ">>" if index == n else "  "
                     pad.addstr(n, 0, pre)
                     bkgd_out = pad.getbkgd()
-                    bkgd_attr:int = bkgd_out[1] if isinstance(bkgd_out, tuple) else bkgd_out
+                    bkgd_attr: int = bkgd_out[1] if isinstance(bkgd_out, tuple) else bkgd_out
                     pad.chgat(n, 0, span[n], bkgd_attr | att)
 
                 pad.refresh(y, 0, Y + 4 + (1 if allowdel else 0), X + 4, rows - 5, cols - 6)
@@ -362,11 +362,13 @@ def count_letters(ebook: Ebook) -> LettersCount:
     assert isinstance(ebook.contents, tuple)
     for i in ebook.contents:
         content = ebook.get_raw_text(i)
-        src_lines_structure = parse_html(content, textwidth=0) # Pass 0 to get only text_lines
+        src_lines_structure = parse_html(content, textwidth=0)  # Pass 0 to get only text_lines
         # Now src_lines_structure is TextStructure. You need to access its text_lines attribute.
         assert isinstance(src_lines_structure.text_lines, tuple)
         cumulative_counts.append(sum(per_content_counts))
-        per_content_counts.append(sum([len(re.sub(r"\s", "", j)) for j in src_lines_structure.text_lines]))
+        per_content_counts.append(
+            sum([len(re.sub(r"\s", "", j)) for j in src_lines_structure.text_lines])
+        )
 
     return LettersCount(all=sum(per_content_counts), cumulative=tuple(cumulative_counts))
 

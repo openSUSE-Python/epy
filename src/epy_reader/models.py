@@ -206,6 +206,7 @@ class Key:
     def __hash__(self) -> int:
         return hash(self.value)
 
+
 def _get_app_config_dir() -> str:
     """
     Calculates and returns the application's configuration directory.
@@ -235,8 +236,10 @@ def _get_app_config_dir() -> str:
 
     return app_config_dir
 
+
 # You can then use this function to define your default prefix:
 DEFAULT_PREFIX: str = _get_app_config_dir()
+
 
 class AppData:
     @property
