@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-epy_reader.egg-info/*
+epy_reader.egg-info/
 .venv
 .idea
 dist
@@ -9,5 +9,3 @@ tmp/
 
 build/**
 !build/gen_pkgbuild.sh
-
-.envrc
