@@ -21,12 +21,12 @@ from epy_reader.speakers import (
 
 
 def get_ebook_obj(filepath: str) -> Ebook:
-    file_ext = os.path.splitext(filepath)[1].lower()
+    file_name, file_ext = os.path.splitext(filepath.lower())
     if is_url(filepath):
         return URL(filepath)
     elif file_ext in {".epub", ".epub3"}:
         return Epub(filepath)
-    elif file_ext == ".fb2":
+    elif file_ext == ".fb2" or file_ext == ".zip" and file_name.endswith(".fb2"):
         return FictionBook(filepath)
     elif file_ext == ".mobi":
         return Mobi(filepath)

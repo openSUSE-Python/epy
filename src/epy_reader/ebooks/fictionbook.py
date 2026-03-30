@@ -1,5 +1,6 @@
 import base64
 import os
+import zipfile
 import xml.etree.ElementTree as ET
 from typing import List, Tuple, Union
 
@@ -13,6 +14,11 @@ class FictionBook(Ebook):
     def __init__(self, filefb: str):
         self.path = os.path.abspath(filefb)
         self.file = filefb
+
+        if zipfile.is_zipfile(filefb):
+            with zipfile.ZipFile(filefb) as z:
+                if info := z.infolist():
+                    self.file = z.open(info[0])
 
         # populate these attribute
         # by calling self.initialize()
